@@ -24,6 +24,16 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
         --results-directory "/results/$(basename "$BUILDCHARTS_SRC" .csproj)_$(date +%Y%m%d-%H%M%S)" || \
         echo "⚠️ dotnet test failed, continuing so results can be verified later"
 
+# Make Cobertura source paths portable. The repository is mounted at /src in the build
+# container, but coverage consumers resolve relative paths against their own checkout.
+RUN find /results -name 'coverage.cobertura.xml' -exec \
+        sed -i -E \
+            -e 's#<source>/</source>#<source>.</source>#g' \
+            -e 's#<source>/src/</source>#<source>.</source>#g' \
+            -e 's#<source>/src</source>#<source>.</source>#g' \
+            -e 's#filename="/src/#filename="#g' \
+            {} +
+
 # Copy TRX and test results (code coverage + attachments) while preserving their relative paths.
 RUN mkdir -p /output && \
     find /results -name '*.trx' \
